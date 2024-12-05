@@ -1,3 +1,4 @@
 .env
 .venv
 offres.db
+.idea
