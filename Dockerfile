@@ -1,23 +1,23 @@
-# Utiliser l'image officielle Selenium avec Chrome
 FROM selenium/standalone-chrome:latest
 
-# Passer en tant qu'utilisateur root pour installer les dépendances
 USER root
 
-# Installer les dépendances nécessaires pour Python et pip
+# Installer les paquets nécessaires à la création d'un venv et à pip
 RUN apt-get update && apt-get install -y \
+    python3-full \
+    python3-venv \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Définir un répertoire de travail
 WORKDIR /app
 
-# Copier le fichier requirements.txt et installer les dépendances Python
+# Copier et installer les dépendances dans un environnement virtuel isolé
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir -r /app/requirements.txt
 
-# Copier le reste des fichiers de l'application
+# Copier le reste du code de l’application
 COPY . /app/
 
-# Définir le point d'entrée
-CMD ["python3", "main.py"]
+# Exécuter l’application à partir de l’environnement virtuel
+CMD ["/app/venv/bin/python", "main.py"]
