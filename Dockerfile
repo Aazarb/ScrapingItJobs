@@ -2,7 +2,7 @@ FROM selenium/standalone-chrome:latest
 
 USER root
 
-# Installer les paquets nécessaires à la création d'un venv et à pip
+# Installer les paquets nécessaires à Python et à pip
 RUN apt-get update && apt-get install -y \
     python3-full \
     python3-venv \
@@ -21,3 +21,4 @@ COPY . /app/
 
 # Exécuter l’application à partir de l’environnement virtuel
 CMD ["/app/venv/bin/python", "main.py"]
+

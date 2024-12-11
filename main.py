@@ -2,6 +2,7 @@ import os
 import logging
 import time
 import sqlite3
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -24,8 +25,14 @@ logging.basicConfig(
 
 # Variables d'environnement
 URL_FREEWORK = os.getenv("URL_FREEWORK")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+SELENIUM_GRID_URL = os.getenv("SELENIUM_GRID_URL", "http://selenium:4444/wd/hub")
+
 if not URL_FREEWORK:
     raise ValueError("L'URL de FreeWork (URL_FREEWORK) doit être définie dans les variables d'environnement.")
+if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+    raise ValueError("Les variables TELEGRAM_TOKEN et TELEGRAM_CHAT_ID doivent être définies.")
 
 # --- Base de données SQLite ---
 def init_db():
@@ -66,6 +73,21 @@ def nettoyer_anciennes_entrees(age_max_jours=30):
     conn.commit()
     conn.close()
 
+# --- Notifications Telegram ---
+def envoyer_message_telegram(message):
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        response = requests.post(url, json=payload)
+        if response.status_code != 200:
+            logging.error(f"Erreur lors de l'envoi du message Telegram : {response.text}")
+    except Exception as e:
+        logging.error(f"Exception lors de l'envoi d'un message Telegram : {e}")
+
 # --- Scraping ---
 def scraper_offres():
     options = Options()
@@ -74,7 +96,10 @@ def scraper_offres():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("user-agent=Mozilla/5.0")
 
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Remote(
+        command_executor=SELENIUM_GRID_URL,
+        options=options
+    )
 
     try:
         logging.info(f"Accès à la page : {URL_FREEWORK}")
@@ -105,6 +130,7 @@ def scraper_offres():
     finally:
         driver.quit()
 
+# --- Traitement des offres ---
 def traiter_offres():
     try:
         logging.info("Début de la fonction traiter_offres.")
@@ -118,6 +144,7 @@ def traiter_offres():
             if not url_deja_traitee(url):
                 logging.info(f"Nouvelle offre détectée : {url}")
                 enregistrer_url(url)
+                envoyer_message_telegram(f"Nouvelle offre détectée : {url}")
             else:
                 logging.info(f"L'offre {url} a déjà été traitée.")
 
